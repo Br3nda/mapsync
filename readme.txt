@@ -11,7 +11,7 @@ author website: http://www.coffee.geek.nz
 == Description ==
 
 == Installation ==
-1. Copy the entire /kml/ directory into your /plugins/ directory.
+1. Copy the entire /mapsync/ directory into your /plugins/ directory.
 2. Activate the plugin.
 
 == Changelog ==

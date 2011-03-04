@@ -33,10 +33,17 @@ mysql_close();
 */
 class Mapsync_Controller extends Controller
 {
-    private function get_map_data() 
+    var $feeds = array(
+//       'portaloos' => 'http://s4.demos.eaglegis.co.nz/ArcGIS/rest/services/Earthquake/lifelines/MapServer/2/query?text=&geometry=&geometryType=esriGeometryPoint&inSR=&spatialRel=esriSpatialRelIntersects&relationParam=&objectIds=&where=1%3D1&time=&returnIdsOnly=false&returnGeometry=true&maxAllowableOffset=&outSR=4326&outFields=*&f=json',
+      'water' => 'http://s4.demos.eaglegis.co.nz/ArcGIS/rest/services/Earthquake/lifelines/MapServer/3/query?text=&geometry=&geometryType=esriGeometryPoint&inSR=&spatialRel=esriSpatialRelIntersects&relationParam=&objectIds=&where=1%3D1&time=&returnIdsOnly=false&returnGeometry=true&maxAllowableOffset=&outSR=4326&outFields=*&f=json',
+//       'fuel' => 'http://s4.demos.eaglegis.co.nz/ArcGIS/rest/services/Earthquake/lifelines/MapServer/4/query?text=&geometry=&geometryType=esriGeometryPoint&inSR=&spatialRel=esriSpatialRelIntersects&relationParam=&objectIds=&where=1%3D1&time=&returnIdsOnly=false&returnGeometry=true&maxAllowableOffset=&outSR=4326&outFields=*&f=json',
+
+    );
+
+    private function get_map_data($feed) 
     {
-	//water
-	$url = 'http://s4.demos.eaglegis.co.nz/ArcGIS/rest/services/Earthquake/lifelines/MapServer/3/query?text=&geometry=&geometryType=esriGeometryPoint&inSR=&spatialRel=esriSpatialRelIntersects&relationParam=&objectIds=&where=1%3D1&time=&returnIdsOnly=false&returnGeometry=true&maxAllowableOffset=&outSR=4326&outFields=*&f=json';
+	
+	$url = $this->feeds[$feed];
 	$ch = curl_init();
 	curl_setopt($ch, CURLOPT_URL, $url);
 	curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
@@ -55,6 +62,7 @@ class Mapsync_Controller extends Controller
 		->orderby('asset_name')
 		->find_all();
 	if (count($existing)) {
+		$report->incident_id = $existing[0]->incident_id;
 		$this->update_existing_report($report);
         }
 	else {
@@ -64,26 +72,41 @@ class Mapsync_Controller extends Controller
 
     public function index()
     {
-      $data = $this->get_map_data();
-      $i=0;
-      foreach($data as $report) {
-	$i++;
-	$report->feed_name = 'water';
-	
-	$this->sync_report_data($report);
+      foreach($this->feeds as $name=>$url) {
+	echo "Getting $name\n";
+	  $data = $this->get_map_data($name);
+	  foreach($data as $report) {
+// 	    var_dump($report);
+	    $report->feed_name = $name;
+	    $this->sync_report_data($report);
+	  }
+// 	  $this->remove_vanished($name);
       }
-	
-    }  
+      //remove those that aren't on the feed anymore
+      	
+    }
+    function remove_vanished($feed_name) {
+      $known = ORM::factory('mapsync')
+		->where('feed_name', $feed_name)
+		->orderby('asset_name')
+		->find_all();
+      foreach($known as $i) {	
+	if(!in_array($i->incident_id, $this->updated)) {
+	  print "This needs removing";
+	}
+      }
+    }
+
 
     function update_existing_report($report) 
     {
-	print "Update new report\n";
+	$this->updated[] = $report->incident_id;
     }
 
     function save_new_report($report) 
     {
 	      print "Saving new report\n";
-	      $title = sprintf("%s: %s %02d/%02d", strtoupper($report->feed_name), $report->attributes->Asset_Name, date('d'), date('m'));
+	      $title = sprintf("%s: %s %02d/%02d", strtoupper($report->feed_name), $report->attributes->Asset_Name, date('d'), date('F'));
 	      print "$title<hr/>\n";
 // 	      var_dump($report);
 
@@ -106,7 +129,7 @@ class Mapsync_Controller extends Controller
 
 // 	      $incident->user_id = $_SESSION['auth_user']->id;
 	      $incident->incident_title = $title;
-	      $incident->incident_description = "Water is available here.";
+	      $incident->incident_description = sprintf("Water is available here. %s.", $report->attributes->Asset_Addr);
 	      $incident->incident_date = date("Y-m-d H:i:s",time());
 
 // 	      // Is this new or edit?

@@ -32,6 +32,7 @@ class Mapsync_Install {
 		// Also include table_prefix in name
 		$this->db->query("
 			CREATE TABLE IF NOT EXISTS `".Kohana::config('database.default.table_prefix')."mapsync` (
+			id autoincrement,
 			objectid int not null, 
 			feed_name varchar(255) not null,
 			asset_name text not null,
@@ -46,6 +47,6 @@ class Mapsync_Install {
 	 */
 	public function uninstall()
 	{
-		$this->db->query('DROP TABLE `'.Kohana::config('database.default.table_prefix').'incident_sync`');
+		$this->db->query('DROP TABLE `'.Kohana::config('database.default.table_prefix').'mapsync`');
 	}
 }

@@ -48,8 +48,8 @@ class Mapsync_Controller extends Controller
     private function sync_report_data($report) {
 	var_dump($report);
 
-	$existing = ORM::factory('apsync')
-		->where('feed_name', $report->feed_nam)
+	$existing = ORM::factory('mapsync')
+		->where('feed_name', $report->feed_name)
 		->where('asset_name', $report->attributes->Asset_Name)
 		->find_all();
 	var_dump($existing);

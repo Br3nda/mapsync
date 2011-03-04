@@ -49,8 +49,9 @@ class Mapsync_Controller extends Controller
 	var_dump($report);
 
 	$existing = ORM::factory('mapsync')
-		->where('feed_name', $report->feed_nam)
+		->where('feed_name', $report->feed_name)
 		->where('asset_name', $report->attributes->Asset_Name)
+		->orderby('asset_name')
 		->find_all();
 	var_dump($existing);
 	/*

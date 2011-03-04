@@ -45,24 +45,22 @@ class Mapsync_Controller extends Controller
 	return $decoded->features;
     }
 
-    private function sync_report_data($report) {
-	var_dump($report);
+    private function sync_report_data($report) 
+    {
 
 	$existing = ORM::factory('mapsync')
 		->where('feed_name', $report->feed_name)
 		->where('asset_name', $report->attributes->Asset_Name)
 		->orderby('asset_name')
 		->find_all();
-	var_dump($existing);
-	/*
-        if(mysql_num_rows($result)) {
-		update_existing_report($report);
+	if (count($existing)) {
+		$this->update_existing_report($report);
         }
 	else {
-		save_new_report($report);
+		$this->save_new_report($report);
 	}
-*/
     }
+
     public function index()
     {
       $data = $this->get_map_data();
@@ -71,91 +69,90 @@ class Mapsync_Controller extends Controller
 	$i++;
 	$report->feed_name = 'water';
 	$this->sync_report_data($report);
+      }
+	
     }  
-/*
-		// How Many Items Should We Retrieve?
-		if (isset($_GET['l']) AND !empty($_GET['l']))
-		{
-			$limit = (int) $_GET['l'];
-		}
-		else
-		{
-			$limit = 100;
-		}
 
-		// Has a category been specified?
-		if (isset($_GET['category_id']) && is_numeric($_GET['category_id']))
-		{
-			$category_id = (int) $_GET['category_id'];
-		}
-		else
-		{
-			$category_id = NULL;
-		}
+    function update_existing_report($report) 
+    {
+	print "Update new report\n";
+    }
 
-		if (!is_null($category_id))
-		{
-			$categories = ORM::factory('category')
-				->where('category_visible', '1')
-				->where('id', $category_id)
-				->find_all();
+    function save_new_report($report) 
+    {
+	      print "Saving new report\n";
+	      $title = sprintf("%s: %s %02d/%02d", strtoupper($report->feed_name), $report->attributes->Asset_Name, date('d'), date('m'));
+	      print "$title<hr/>\n";
+// 	      var_dump($report);
 
-			$incidents = ORM::factory('incident')
-				->join('incident_category', 'incident_category.incident_id', 'incident.id', 'INNER')
-				->where('incident_category.category_id', $category_id)
-				->where('incident_active', '1')
-				->orderby('incident_date', 'desc')
-				->limit($limit)
-				->find_all();
-		}
-		else
-		{
-			$categories = ORM::factory('category')
-				->where('category_visible', '1')
-				->find_all();
+// 	      // Yes! everything is valid
+// 	      $location_id = $post->location_id;
+// 	      // STEP 1a: SAVE LOCATION
+	      $location = new Location_Model();
+// 	      $location->location_name = $post->location_name;
+	      $location->latitude = $report->geometry->x;
+	      $location->longitude = $report->geometry->y;
+	      $location->location_date = date("Y-m-d H:i:s",time());
+	      $location->save();
+// 	      var_dump($location);
+// 
+// 	      // STEP 2: SAVE INCIDENT
+	      $incident = new Incident_Model();
+	      $incident->location_id = $location->id;
+	      //$incident->locale = $post->locale;
 
-			$incidents = ORM::factory('incident')
-				->where('incident_active', '1')
-				->orderby('incident_date', 'desc')
-				->limit($limit)
-				->find_all();
-		}
+// 	      $incident->user_id = $_SESSION['auth_user']->id;
+	      $incident->incident_title = $title;
+	      $incident->incident_description = "Auto imported";
+	      $incident->incident_date = date("Y-m-d H:i:s",time());
 
-		header("Content-Type: application/vnd.google-earth.kml+xml");
-		header("Content-Disposition: attachment; filename=".time().".kml");
-		header("Last-Modified: ".gmdate("D, d M Y H:i:s")." GMT");
-		header("Cache-Control: cache, must-revalidate");
-		header("Pragma: public");
+// 	      // Is this new or edit?
+// 	      if (!empty($id))        // edit
+// 	      {
+// 		      $incident->incident_datemodify = date("Y-m-d H:i:s",time());
+// 	      }
+// 	      else            // new
+// 	      {
+// 		      $incident->incident_dateadd = date("Y-m-d H:i:s",time());
+// 	      }
 
-		$view = new View("kml");
-		$view->kml_name = htmlspecialchars(Kohana::config('settings.site_name'));
-		$view->items = $incidents;
-		$view->categories = $categories;
-		$view->render(TRUE);
-*/
-	}
+	      // Incident Evaluation Info
+	      $incident->incident_active = FALSE;
+	      $incident->incident_verified = TRUE;
+	      $incident->incident_source = 'Auto Imported';
+//                                 $incident->incident_information = $post->incident_information;
+//                                 $incident->incident_zoom = (int) $post->incident_zoom;
+	      //Save
+	      $incident->save();
+
+	    // STEP 3: SAVE CATEGORIES
+	    ORM::factory('Incident_Category')->where('incident_id',$incident->id)->delete_all();            // Delete Previous Entries
+
+	    $categories = array(66);
+	    foreach($categories as $item)
+	    {
+		    $incident_category = new Incident_Category_Model();
+		    $incident_category->incident_id = $incident->id;
+		    $incident_category->category_id = $item;
+		    $incident_category->save();
+	    }
+
+	    // Action::report_edit - Edited a Report
+	    Event::run('ushahidi_action.report_edit', $incident);
 
 
-
-function update_existing_report($report) {
-}
-
-function save_new_report($report) {
-	print "Saving new report\n";
-	$title = sprintf("%s: %s %02d/%02d", strtoupper($report->feed_name), $report->attributes->Asset_Name, date('d'), date('m'));
-	print "$title\n";
-	$query = sprintf("INSERT INTO incident (incident_title, incident_date) VALUES ('%s', %d)",
-		se($title),
-		strtotime('now'));
-	print "\t$query\n";
-	mysql_query($query);
-
-	$query = sprintf("INSERT INTO incident_sync (feed_name, asset_name) VALUES ('%s', '%s')",
-		se($report->feed_name),
-		se($report->attributes->Asset_Name));
-	print "\t$query\n";
-	mysql_query($query);
-}
+// 	      $query = sprintf("INSERT INTO incident (incident_title, incident_date) VALUES ('%s', %d)",
+// 		      se($title),
+// 		      strtotime('now'));
+// 	      print "\t$query\n";
+// 	      mysql_query($query);
+// 
+// 	      $query = sprintf("INSERT INTO incident_sync (feed_name, asset_name) VALUES ('%s', '%s')",
+// 		      se($report->feed_name),
+// 		      se($report->attributes->Asset_Name));
+// 	      print "\t$query\n";
+// 	      mysql_query($query);
+      }
 
 
 }

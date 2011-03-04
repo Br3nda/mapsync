@@ -36,12 +36,13 @@ class Mapsync_Controller extends Controller
     private function get_map_data() 
     {
 	//water
-	$url = 'http://s4.demos.eaglegis.co.nz/ArcGIS/rest/services/Earthquake/lifelines/MapServer/3/query?text=&geometry=&geometryType=esriGeometryPoint&inSR=&spatialRel=esriSpatialRelIntersects&relationParam=&objectIds=&where=1%3D1&time=&returnIdsOnly=false&returnGeometry=true&maxAllowableOffset=&outSR=4326&outFields=&f=json';
+	$url = 'http://s4.demos.eaglegis.co.nz/ArcGIS/rest/services/Earthquake/lifelines/MapServer/3/query?text=&geometry=&geometryType=esriGeometryPoint&inSR=&spatialRel=esriSpatialRelIntersects&relationParam=&objectIds=&where=1%3D1&time=&returnIdsOnly=false&returnGeometry=true&maxAllowableOffset=&outSR=4326&outFields=*&f=json';
 	$ch = curl_init();
 	curl_setopt($ch, CURLOPT_URL, $url);
 	curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
 	$response = curl_exec($ch);
 	$decoded = json_decode($response);
+	
 	return $decoded->features;
     }
 
@@ -50,7 +51,7 @@ class Mapsync_Controller extends Controller
 
 	$existing = ORM::factory('mapsync')
 		->where('feed_name', $report->feed_name)
-		->where('asset_name', $report->attributes->Asset_Name)
+		->where('objectid', $report->attributes->OBJECTID)
 		->orderby('asset_name')
 		->find_all();
 	if (count($existing)) {
@@ -68,6 +69,7 @@ class Mapsync_Controller extends Controller
       foreach($data as $report) {
 	$i++;
 	$report->feed_name = 'water';
+	
 	$this->sync_report_data($report);
       }
 	
@@ -89,9 +91,10 @@ class Mapsync_Controller extends Controller
 // 	      $location_id = $post->location_id;
 // 	      // STEP 1a: SAVE LOCATION
 	      $location = new Location_Model();
-// 	      $location->location_name = $post->location_name;
-	      $location->latitude = $report->geometry->x;
-	      $location->longitude = $report->geometry->y;
+ 	      $location->location_name = $report->attributes->Asset_Addr;
+	      $location->country_id = 171;
+	      $location->latitude = $report->geometry->y;
+	      $location->longitude = $report->geometry->x;
 	      $location->location_date = date("Y-m-d H:i:s",time());
 	      $location->save();
 // 	      var_dump($location);
@@ -103,7 +106,7 @@ class Mapsync_Controller extends Controller
 
 // 	      $incident->user_id = $_SESSION['auth_user']->id;
 	      $incident->incident_title = $title;
-	      $incident->incident_description = "Auto imported";
+	      $incident->incident_description = "Water is available here.";
 	      $incident->incident_date = date("Y-m-d H:i:s",time());
 
 // 	      // Is this new or edit?
@@ -139,8 +142,13 @@ class Mapsync_Controller extends Controller
 
 	    // Action::report_edit - Edited a Report
 	    Event::run('ushahidi_action.report_edit', $incident);
-
-
+	    
+	    $sync = new Mapsync_Model();
+	    $sync->objectid = $report->attributes->OBJECTID;
+	    $sync->feed_name = $report->feed_name;
+	    $sync->asset_name = $report->attributes->Asset_Name;
+	    $sync->incident_id = $incident->id;
+	    $sync->save();
 // 	      $query = sprintf("INSERT INTO incident (incident_title, incident_date) VALUES ('%s', %d)",
 // 		      se($title),
 // 		      strtotime('now'));

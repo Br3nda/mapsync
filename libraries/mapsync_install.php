@@ -32,6 +32,7 @@ class Mapsync_Install {
 		// Also include table_prefix in name
 		$this->db->query("
 			CREATE TABLE IF NOT EXISTS `".Kohana::config('database.default.table_prefix')."mapsync` (
+			objectid int NOT NULL,
 			feed_name varchar(255) not null,
 			asset_name text not null,
 			incident_id int unique,

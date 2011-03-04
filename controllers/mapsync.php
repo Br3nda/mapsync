@@ -76,7 +76,7 @@ class Mapsync_Controller extends Controller
 	echo "Getting $name\n";
 	  $data = $this->get_map_data($name);
 	  foreach($data as $report) {
-// 	    var_dump($report);
+// // 	    var_dump($report);
 	    $report->feed_name = $name;
 	    $this->sync_report_data($report);
 	  }
@@ -106,7 +106,7 @@ class Mapsync_Controller extends Controller
     function save_new_report($report) 
     {
 	      print "Saving new report\n";
-	      $title = sprintf("%s: %s %02d/%02d", strtoupper($report->feed_name), $report->attributes->Asset_Name, date('d'), date('F'));
+	      $title = sprintf("%s: %s %02d/%s", strtoupper($report->feed_name), $report->attributes->Asset_Name, date('d'), date('F'));
 	      print "$title<hr/>\n";
 // 	      var_dump($report);
 

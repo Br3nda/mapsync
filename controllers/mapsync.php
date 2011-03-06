@@ -15,22 +15,6 @@
 *
 */
 
-/*<?php
-chdir ('../../');
-require('system/core/Bootstrap.php');
-exit;
-
-$conn = mysql_connect('localhost', 'root', 'root');
-mysql_query("DELETE FROM incident_sync");
-mysql_select_db('ccnz');
-
-
-mysql_close();
-
-
-
-
-*/
 class Mapsync_Controller extends Controller
 {
     var $feeds = array(
@@ -80,7 +64,7 @@ class Mapsync_Controller extends Controller
 	    $report->feed_name = $name;
 	    $this->sync_report_data($report);
 	  }
-// 	  $this->remove_vanished($name);
+	  $this->remove_vanished($name);
       }
       //remove those that aren't on the feed anymore
       	
